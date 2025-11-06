@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import contextlib
 import functools
+import types
 import warnings
 from collections import deque
 from dataclasses import dataclass
@@ -47,6 +48,23 @@ def is_in_torch_dispatch_mode(include_infra_modes: bool = True) -> bool:
 
 def is_in_any_mode_without_ignore_compile_internals() -> bool:
     return _is_in_any_mode_without_ignore_compile_internals
+
+
+def any_torch_dispatch_mode_on_stack() -> bool:
+    stack_len = torch._C._len_torch_dispatch_stack()
+
+    for idx in range(stack_len):
+        mode = _get_dispatch_stack_at(idx)
+
+        # Apply filters first
+        if mode.is_infra_mode():
+            continue
+
+        if mode.ignore_compile_internals():
+            continue
+
+        return True
+    return False
 
 
 class TorchDispatchMode:
@@ -97,6 +115,11 @@ class TorchDispatchMode:
         self.old_without_ignore_compile_internals_dispatch_mode_flags: deque[bool] = (
             deque()
         )
+        # Wrap the unbound method from the class, then bind it to self
+        wrapped = torch._disable_dynamo(
+            self.__class__.__torch_dispatch__, recursive=True
+        )
+        self.__torch_dispatch__ = types.MethodType(wrapped, self)
 
     def _lazy_init_old_dispatch_mode_flags(self):
         if not hasattr(self, "old_dispatch_mode_flags"):
