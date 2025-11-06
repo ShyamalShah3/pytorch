@@ -395,6 +395,7 @@ def set_rng_state(
     )
 
 
+from ._mtia_graph import _graph, _MTIAGraph  # noqa: F403
 from .memory import *  # noqa: F403
 
 
@@ -424,4 +425,6 @@ __all__ = [
     "set_rng_state",
     "get_rng_state",
     "is_bf16_supported",
+    "_MTIAGraph",
+    "_graph",
 ]
